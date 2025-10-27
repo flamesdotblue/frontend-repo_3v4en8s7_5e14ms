@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
-function formatPrice(cents) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+function formatPrice(paise) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(paise / 100);
 }
 
 export default function Checkout({ items, onBackToShop, onOrderPlaced }) {
@@ -10,6 +10,8 @@ export default function Checkout({ items, onBackToShop, onOrderPlaced }) {
   const tax = Math.round(subtotal * 0.07);
   const shipping = subtotal > 0 ? 1200 : 0;
   const total = subtotal + tax + shipping;
+
+  const [paymentMethod, setPaymentMethod] = useState("card"); // card | cod
 
   const [form, setForm] = useState({
     name: "",
@@ -26,23 +28,17 @@ export default function Checkout({ items, onBackToShop, onOrderPlaced }) {
   const [success, setSuccess] = useState(false);
   const [orderId, setOrderId] = useState("");
 
-  const canSubmit =
-    items.length > 0 &&
-    form.name &&
-    /.+@.+\..+/.test(form.email) &&
-    form.address &&
-    form.city &&
-    form.state &&
-    form.zip &&
-    form.card &&
-    form.expiry &&
-    form.cvc;
+  const contactValid = form.name && /.+@.+\..+/.test(form.email);
+  const shippingValid = form.address && form.city && form.state && form.zip;
+  const paymentValid =
+    paymentMethod === "cod" || (form.card && form.expiry && form.cvc);
+
+  const canSubmit = items.length > 0 && contactValid && shippingValid && paymentValid;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit) return;
     setSubmitting(true);
-    // Simulate processing
     await new Promise((r) => setTimeout(r, 1200));
     const oid = "VC-" + Math.random().toString(36).slice(2, 8).toUpperCase();
     setOrderId(oid);
@@ -61,6 +57,10 @@ export default function Checkout({ items, onBackToShop, onOrderPlaced }) {
           <div className="flex items-center justify-between text-sm">
             <span className="text-slate-500">Order number</span>
             <span className="font-medium text-slate-900">{orderId}</span>
+          </div>
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <span className="text-slate-500">Payment method</span>
+            <span className="font-medium text-slate-900">{paymentMethod === "cod" ? "Cash on Delivery" : "Card"}</span>
           </div>
           <div className="mt-2 flex items-center justify-between text-sm">
             <span className="text-slate-500">Total</span>
@@ -155,9 +155,39 @@ export default function Checkout({ items, onBackToShop, onOrderPlaced }) {
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <h3 className="font-medium text-slate-900 mb-4">Payment</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+            <h3 className="font-medium text-slate-900">Payment</h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className={`flex items-center gap-3 rounded-md border p-3 cursor-pointer ${paymentMethod === "card" ? "border-slate-900" : "border-slate-200"}`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  value="card"
+                  checked={paymentMethod === "card"}
+                  onChange={() => setPaymentMethod("card")}
+                />
+                <span className="text-sm font-medium text-slate-900">Card</span>
+              </label>
+              <label className={`flex items-center gap-3 rounded-md border p-3 cursor-pointer ${paymentMethod === "cod" ? "border-slate-900" : "border-slate-200"}`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  value="cod"
+                  checked={paymentMethod === "cod"}
+                  onChange={() => setPaymentMethod("cod")}
+                />
+                <span className="text-sm font-medium text-slate-900">Cash on Delivery</span>
+              </label>
+            </div>
+
+            {paymentMethod === "cod" && (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3">
+                Pay with cash when your order arrives. Make sure someone is available to receive the package.
+              </p>
+            )}
+
+            <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 ${paymentMethod === "cod" ? "opacity-50" : "opacity-100"}`}>
               <div className="sm:col-span-3">
                 <label className="block text-sm text-slate-600 mb-1">Card number</label>
                 <input
@@ -167,7 +197,8 @@ export default function Checkout({ items, onBackToShop, onOrderPlaced }) {
                   onChange={(e) => setForm({ ...form, card: e.target.value.replace(/[^0-9\s]/g, "") })}
                   className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                   placeholder="4242 4242 4242 4242"
-                  required
+                  disabled={paymentMethod === "cod"}
+                  required={paymentMethod === "card"}
                 />
               </div>
               <div>
@@ -179,7 +210,8 @@ export default function Checkout({ items, onBackToShop, onOrderPlaced }) {
                   onChange={(e) => setForm({ ...form, expiry: e.target.value.replace(/[^0-9/]/g, "") })}
                   className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                   placeholder="MM/YY"
-                  required
+                  disabled={paymentMethod === "cod"}
+                  required={paymentMethod === "card"}
                 />
               </div>
               <div>
@@ -191,7 +223,8 @@ export default function Checkout({ items, onBackToShop, onOrderPlaced }) {
                   onChange={(e) => setForm({ ...form, cvc: e.target.value.replace(/[^0-9]/g, "") })}
                   className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                   placeholder="123"
-                  required
+                  disabled={paymentMethod === "cod"}
+                  required={paymentMethod === "card"}
                 />
               </div>
             </div>

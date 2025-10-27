@@ -1,5 +1,5 @@
 function formatPrice(cents) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(cents / 100);
 }
 
 export default function ProductGrid({ products, query, onAdd }) {
